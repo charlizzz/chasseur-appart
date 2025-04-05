@@ -1,0 +1,142 @@
+services:
+  chasseur-appart:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      secrets:
+        - composer_auth
+      args:
+        - ENV=development
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME:-localhost}
+      WP_ENV: ${WP_ENV:-development}
+      WP_HOME: ${WP_HOME:-http://localhost}
+      WP_SITEURL: ${WP_SITEURL:-http://localhost/wp}
+      WP_DEBUG_LOG: ${WP_DEBUG_LOG:-/var/log/wp-debug.log}
+      DB_NAME: ${DB_NAME:-nom_de_la_bdd}
+      DB_USER: ${DB_USER:-wordpress}
+      DB_PASSWORD: ${DB_PASSWORD:-wppassword}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PREFIX: ${DB_PREFIX:-wp_}
+      AUTH_KEY: ${AUTH_KEY:-generate}
+      SECURE_AUTH_KEY: ${SECURE_AUTH_KEY:-generate}
+      LOGGED_IN_KEY: ${LOGGED_IN_KEY:-generate}
+      NONCE_KEY: ${NONCE_KEY:-generate}
+      AUTH_SALT: ${AUTH_SALT:-generate}
+      SECURE_AUTH_SALT: ${SECURE_AUTH_SALT:-generate}
+      LOGGED_IN_SALT: ${LOGGED_IN_SALT:-generate}
+      NONCE_SALT: ${NONCE_SALT:-generate}
+      THEME_NAME: ${THEME_NAME:-nom_du_theme}
+      NODE_ENV: ${NODE_ENV:-development}
+      XDEBUG_MODE: ${XDEBUG_MODE:-develop,debug}
+      COMPOSER_AUTH: ${COMPOSER_AUTH:-/run/secrets/composer_auth}
+    secrets:
+       - composer_auth
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wordpress-http.rule=Host(`${DOMAIN_NAME}`) || Host(`www.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.wordpress-http.entrypoints=web"
+      - "traefik.http.routers.wordpress-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.wordpress-https.rule=Host(`${DOMAIN_NAME}`) || Host(`www.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.wordpress-https.entrypoints=websecure"
+      - "traefik.http.routers.wordpress-https.tls=true"
+      - "traefik.http.routers.wordpress-https.tls.certresolver=myresolver"
+      - "traefik.http.routers.wordpress-https.middlewares=redirect-to-non-www"
+      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      - "traefik.http.middlewares.redirect-to-non-www.redirectregex.regex=^https?://www.${DOMAIN_NAME}/(.*)"
+      - "traefik.http.middlewares.redirect-to-non-www.redirectregex.replacement=https://${DOMAIN_NAME}/$${1}"
+      - "traefik.http.middlewares.redirect-to-non-www.redirectregex.permanent=true"
+    extra_hosts:
+      # for Xdebug and fpm
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      reverse-proxy:
+        condition: service_started
+    # for dev env, via docker compose watch
+    develop:
+      watch:
+        - action: sync
+          path: ./
+          target: /var/www
+          ignore:
+            - node_modules
+            - vendor
+        - action: rebuild
+          path: composer.json
+        - action: rebuild
+          path: composer.lock
+    tty: true
+
+
+  db:
+    image: mariadb:lts
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-exampledb}
+      MARIADB_USER: ${DB_USER:-exampleuser}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-examplepass}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.db-wordpress.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.db-wordpress.entrypoints=mysql"
+      - "traefik.tcp.services.db-wordpress-service.loadbalancer.server.port=3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - base-de-donnee-vol:/var/lib/mysql
+      # to mount the sql dump of the database from the project
+      - ./db/site_dev.sql:/docker-entrypoint-initdb.d/site_dev.sql
+
+  phpmyadmin:
+    image: phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${PMA_USER:-root}
+      PMA_PASSWORD: ${PMA_PASSWORD:-${DB_ROOT_PASSWORD}}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phpmyadmin-http.rule=Host(`phpmyadmin.docker`)"
+      - "traefik.http.routers.phpmyadmin-http.entrypoints=web"
+      - "traefik.http.routers.phpmyadmin-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.phpmyadmin-https.rule=Host(`phpmyadmin.docker`)"
+      - "traefik.http.routers.phpmyadmin-https.entrypoints=websecure"
+      - "traefik.http.routers.phpmyadmin-https.tls=true"
+      - "traefik.http.routers.phpmyadmin-https.tls.certresolver=myresolver"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./db/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+  
+  reverse-proxy:
+    # The official v3 Traefik docker image
+    image: traefik:v3.2
+    # Enables the web UI and tells Traefik to listen to docker
+    ports:
+      # The HTTP port
+      - "80:80"
+      # The HTTPS port
+      - "443:443"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - traefik-certs:/certs
+      - /var/run/docker.sock:/var/run/docker.sock:ro # So that Traefik can listen to the Docker events
+
+secrets:
+   composer_auth:
+     file: ./auth.json
+
+volumes:
+  base-de-donnee-vol:
+  traefik-certs:
