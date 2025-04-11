@@ -1,0 +1,7 @@
+error_page 503 @maintenance;
+
+location @maintenance {
+        root $maintenance_root;
+        rewrite ^(.*)$ /maintenance.html break;
+}
+

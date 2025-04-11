@@ -1,0 +1,25 @@
+{
+  "name": "chasseur-appart",
+  "version": "1.0.0",
+  "description": "Website to show the expertise of chasseurs d'appart",
+  "main": "index.js",
+  "scripts": {
+    "reset": "(echo \"\nRemoving themes dependencies\n\" && rm -Rf web/app/themes/*/node_modules);",
+    "postinstall": "(cd web/app/themes/*/ && echo \"\nInstalling Child Theme\n\" && npm i);",
+    "build": "cd web/app/themes/*/ && npm run build",
+    "test": "echo \"Error: no tests required for this package.json.\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/charlizzz/chasseur-appart"
+  },
+  "keywords": [
+    "chasseur",
+    "appart",
+    "wordpress",
+    "website",
+    "vitrine"
+  ],
+  "author": "",
+  "license": "ISC"
+}
