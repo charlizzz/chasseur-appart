@@ -33,7 +33,7 @@
   "require": {
     "php": ">=8.1",
     "composer/installers": "^2.2",
-    "vlucas/phpdotenv": "^5.5",
+    "vlucas/phpdotenv": "^5.6",
     "oscarotero/env": "^2.1",
     "roots/bedrock-autoloader": "^1.0",
     "roots/bedrock-disallow-indexing": "^2.0",
@@ -43,8 +43,7 @@
     "wpackagist-theme/twentytwentyfive": "^1.0"
   },
   "require-dev": {
-    "roave/security-advisories": "dev-latest",
-    "laravel/pint": "^1.18"
+    "roave/security-advisories": "dev-latest"
   },
   "config": {
     "optimize-autoloader": true,

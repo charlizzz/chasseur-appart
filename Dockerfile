@@ -1,7 +1,7 @@
 ARG USER=www-data
 ARG ENV=production
 ARG NODE_VERSION=20
-ARG PHP_CONTAINER=8.1-fpm-bullseye
+ARG PHP_CONTAINER=8.4-fpm-bullseye
 ARG THEME_NAME=montheme
 
 
@@ -54,13 +54,13 @@ ARG USER
 ENV ENV=${ENV}
 WORKDIR /var/www
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y \
-    wget curl sendmail apt-transport-https ca-certificates openssh-client git jq supervisor nginx \
+    wget curl sendmail openssh-client git jq supervisor nginx \
     unzip zip libzip-dev libcurl4-openssl-dev libwebp-dev libfreetype6-dev \
     libjpeg62-turbo-dev libpng-dev libgmp-dev libldap2-dev libonig-dev \
-    libicu-dev libtidy-dev libxslt-dev libbz2-dev libpq-dev libreadline-dev libxml2-dev libyaml-dev \
+    libicu-dev libtidy-dev libxslt-dev libbz2-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN docker-php-ext-install bcmath curl gmp gd intl mbstring \
-    opcache bz2 mysqli pdo_mysql zip xml soap tidy xsl \
+    opcache bz2 mysqli pdo_mysql zip xml tidy xsl \
 # configure gd
 && docker-php-ext-configure gd --with-freetype=/usr/include/freetype2 --with-jpeg=/usr/include/
 # https://wordpress.org/support/article/editing-wp-config-php/#configure-error-logging

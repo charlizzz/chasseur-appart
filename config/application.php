@@ -14,7 +14,7 @@ use Roots\WPConfig\Config;
 use function Env\env;
 
 // USE_ENV_ARRAY + CONVERT_* + STRIP_QUOTES
-Env\Env::$options = 31;
+Env\Env::$options = 79;
 
 /**
  * Directory containing all of the site's files
